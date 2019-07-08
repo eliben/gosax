@@ -1,6 +1,11 @@
 package gosax
 
-import "sync"
+import (
+	"fmt"
+	"sync"
+)
+
+import "github.com/eliben/gosax/pointer"
 
 /*
 #cgo pkg-config: libxml-2.0
@@ -18,4 +23,7 @@ func init() {
 	initOnce.Do(func() {
 		C.xmlInitParser()
 	})
+
+	up := pointer.Save(3)
+	fmt.Println(up)
 }
