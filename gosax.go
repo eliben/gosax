@@ -27,3 +27,15 @@ func init() {
 	up := pointer.Save(3)
 	fmt.Println(up)
 }
+
+type StartDocumentFunc func()
+type StartElementFunc func(name string, attrs []string)
+
+type SaxCallbacks struct {
+	StartDocument StartDocumentFunc
+	StartElement  StartElementFunc
+}
+
+func ParseFile(filename string, cb SaxCallbacks) error {
+
+}
