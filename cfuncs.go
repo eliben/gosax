@@ -7,12 +7,17 @@ package gosax
 #include <libxml/parser.h>
 
 extern void goStartDocument(void*);
+extern void goEndDocument(void*);
 extern void goStartElement(void*, const xmlChar*, const xmlChar**, int);
 extern void goEndElement(void*, const xmlChar*);
 extern void goCharacters(void*, const xmlChar*, int);
 
 void startDocumentCgo(void* user_data) {
   goStartDocument(user_data);
+}
+
+void endDocumentCgo(void* user_data) {
+	goEndDocument(user_data);
 }
 
 void startElementCgo(void* user_data,

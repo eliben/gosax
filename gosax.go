@@ -14,6 +14,7 @@ import (
 #include <libxml/parserInternals.h>
 
 extern void startDocumentCgo(void*);
+extern void endDocumentCgo(void*);
 extern void startElementCgo(void*, const xmlChar*, const xmlChar**);
 extern void endElementCgo(void*, const xmlChar*);
 extern void charactersCgo(void*, const xmlChar*, int);
@@ -38,12 +39,14 @@ func init() {
 }
 
 type StartDocumentFunc func()
+type EndDocumentFunc func()
 type StartElementFunc func(name string, attrs []string)
 type EndElementFunc func(name string)
 type CharactersFunc func(contents string)
 
 type SaxCallbacks struct {
 	StartDocument StartDocumentFunc
+	EndDocument   EndDocumentFunc
 	StartElement  StartElementFunc
 	EndElement    EndElementFunc
 	Characters    CharactersFunc
@@ -53,6 +56,12 @@ type SaxCallbacks struct {
 func goStartDocument(user_data unsafe.Pointer) {
 	gcb := pointer.Restore(user_data).(*SaxCallbacks)
 	gcb.StartDocument()
+}
+
+//export goEndDocument
+func goEndDocument(user_data unsafe.Pointer) {
+	gcb := pointer.Restore(user_data).(*SaxCallbacks)
+	gcb.EndDocument()
 }
 
 //export goStartElement
@@ -91,17 +100,26 @@ func ParseFile(filename string, cb SaxCallbacks) error {
 	var cfilename *C.char = C.CString(filename)
 	defer C.free(unsafe.Pointer(cfilename))
 
+	// newHandlerStruct zeroes out all the pointers; we assign only those that
+	// are passed as non-nil in SaxCallbacks.
 	SAXhandler := C.newHandlerStruct()
 
 	if cb.StartDocument != nil {
 		SAXhandler.startDocument = C.startDocumentSAXFunc(C.startDocumentCgo)
 	}
+
+	if cb.EndDocument != nil {
+		SAXhandler.endDocument = C.endDocumentSAXFunc(C.endDocumentCgo)
+	}
+
 	if cb.StartElement != nil {
 		SAXhandler.startElement = C.startElementSAXFunc(C.startElementCgo)
 	}
+
 	if cb.EndElement != nil {
 		SAXhandler.endElement = C.endElementSAXFunc(C.endElementCgo)
 	}
+
 	if cb.Characters != nil {
 		SAXhandler.characters = C.charactersSAXFunc(C.charactersCgo)
 	}
@@ -109,6 +127,7 @@ func ParseFile(filename string, cb SaxCallbacks) error {
 	user_data := pointer.Save(&cb)
 	defer pointer.Unref(user_data)
 
+	// TODO: more real error handling -- actually report the parsing error
 	rc := C.xmlSAXUserParseFile(&SAXhandler, user_data, cfilename)
 	if rc != 0 {
 		fmt.Println("xmlSAXUserParseFile returned", rc)

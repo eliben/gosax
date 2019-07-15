@@ -10,9 +10,15 @@ func TestInit(*testing.T) {
 
 func TestBasic(t *testing.T) {
 	var plantId string
+	var startDoc bool
+	var endDoc bool
 
 	scb := SaxCallbacks{
 		StartDocument: func() {
+			startDoc = true
+		},
+		EndDocument: func() {
+			endDoc = true
 		},
 		StartElement: func(name string, attrs []string) {
 			if name == "plant" {
@@ -36,6 +42,14 @@ func TestBasic(t *testing.T) {
 
 	if plantId != "27" {
 		t.Errorf("want plant id %v, got %v", 27, plantId)
+	}
+
+	if !startDoc {
+		t.Errorf("want doc start, found none")
+	}
+
+	if !endDoc {
+		t.Errorf("want doc end, found none")
 	}
 }
 
