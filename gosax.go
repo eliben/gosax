@@ -1,11 +1,9 @@
 package gosax
 
 import (
-	"fmt"
 	"sync"
+	"unsafe"
 )
-
-import "github.com/eliben/gosax/pointer"
 
 /*
 #cgo pkg-config: libxml-2.0
@@ -15,6 +13,7 @@ import "github.com/eliben/gosax/pointer"
 #include <libxml/parserInternals.h>
 */
 import "C"
+import "github.com/eliben/gosax/pointer"
 
 // Used to ensure that xmlInitParser is only called once.
 var initOnce sync.Once
@@ -23,9 +22,6 @@ func init() {
 	initOnce.Do(func() {
 		C.xmlInitParser()
 	})
-
-	up := pointer.Save(3)
-	fmt.Println(up)
 }
 
 type StartDocumentFunc func()
@@ -36,6 +32,18 @@ type SaxCallbacks struct {
 	StartElement  StartElementFunc
 }
 
+//export goStartDocument
+func goStartDocument(user_data unsafe.Pointer) {
+	gcb := pointer.Restore(user_data).(*SaxCallbacks)
+	gcb.StartDocument()
+}
+
+//export goStartElement
+func goStartElement(user_data unsafe.Pointer, name *C.char, attrs **C.char) {
+
+}
+
 func ParseFile(filename string, cb SaxCallbacks) error {
 
+	return nil
 }
