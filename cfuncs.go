@@ -24,9 +24,7 @@ void startElementCgo(void* user_data,
       i++;
     }
   }
-  printf("@@ i = %d\n", i);
   goStartElement(user_data, name, attrs, i);
-  printf("@@ after Go call\n");
 }
 
 void endElementCgo(void* user_data, const xmlChar* name) {

@@ -54,7 +54,6 @@ func goStartDocument(user_data unsafe.Pointer) {
 
 //export goStartElement
 func goStartElement(user_data unsafe.Pointer, name *C.char, attrs **C.char, attrlen C.int) {
-	fmt.Println("goStartElement entry")
 	gcb := pointer.Restore(user_data).(*SaxCallbacks)
 	length := int(attrlen)
 	var goattrs []string
@@ -66,7 +65,6 @@ func goStartElement(user_data unsafe.Pointer, name *C.char, attrs **C.char, attr
 		}
 	}
 	gcb.StartElement(C.GoString(name), goattrs)
-	fmt.Println("goStartElement after invoking StartElement")
 }
 
 //export goEndElement
