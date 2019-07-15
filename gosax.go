@@ -14,8 +14,15 @@ import (
 #include <libxml/parserInternals.h>
 
 extern void startDocumentCgo(void*);
-
 extern void startElementCgo(void*, const xmlChar*, const xmlChar**);
+extern void endElementCgo(void*, const xmlChar*);
+
+// Since this structure contains pointers, take extra care to zero it out
+// before passing it to Go code.
+static inline xmlSAXHandler newHandlerStruct() {
+	xmlSAXHandler h = {0};
+	return h;
+}
 */
 import "C"
 import "github.com/eliben/gosax/pointer"
@@ -31,10 +38,12 @@ func init() {
 
 type StartDocumentFunc func()
 type StartElementFunc func(name string, attrs []string)
+type EndElementFunc func(name string)
 
 type SaxCallbacks struct {
 	StartDocument StartDocumentFunc
 	StartElement  StartElementFunc
+	EndElement    EndElementFunc
 }
 
 //export goStartDocument
@@ -45,22 +54,32 @@ func goStartDocument(user_data unsafe.Pointer) {
 
 //export goStartElement
 func goStartElement(user_data unsafe.Pointer, name *C.char, attrs **C.char, attrlen C.int) {
+	fmt.Println("goStartElement entry")
 	gcb := pointer.Restore(user_data).(*SaxCallbacks)
 	length := int(attrlen)
-	tmpslice := (*[1 << 30]*C.char)(unsafe.Pointer(attrs))[:length:length]
-	goattrs := make([]string, length)
-	for i, s := range tmpslice {
-		goattrs[i] = C.GoString(s)
+	var goattrs []string
+	if length > 0 {
+		tmpslice := (*[1 << 30]*C.char)(unsafe.Pointer(attrs))[:length:length]
+		goattrs = make([]string, length)
+		for i, s := range tmpslice {
+			goattrs[i] = C.GoString(s)
+		}
 	}
 	gcb.StartElement(C.GoString(name), goattrs)
+	fmt.Println("goStartElement after invoking StartElement")
+}
 
+//export goEndElement
+func goEndElement(user_data unsafe.Pointer, name *C.char) {
+	gcb := pointer.Restore(user_data).(*SaxCallbacks)
+	gcb.EndElement(C.GoString(name))
 }
 
 func ParseFile(filename string, cb SaxCallbacks) error {
 	var cfilename *C.char = C.CString(filename)
 	defer C.free(unsafe.Pointer(cfilename))
 
-	chandler := C.xmlSAXHandler{}
+	chandler := C.newHandlerStruct()
 
 	if cb.StartDocument != nil {
 		chandler.startDocument = C.startDocumentSAXFunc(C.startDocumentCgo)
@@ -72,6 +91,12 @@ func ParseFile(filename string, cb SaxCallbacks) error {
 		chandler.startElement = C.startElementSAXFunc(C.startElementCgo)
 	} else {
 		chandler.startElement = nil
+	}
+
+	if cb.EndElement != nil {
+		chandler.endElement = C.endElementSAXFunc(C.endElementCgo)
+	} else {
+		chandler.endElement = nil
 	}
 
 	chandler.internalSubset = nil
@@ -87,7 +112,6 @@ func ParseFile(filename string, cb SaxCallbacks) error {
 	chandler.unparsedEntityDecl = nil
 	chandler.setDocumentLocator = nil
 	chandler.endDocument = nil
-	chandler.endElement = nil
 	chandler.reference = nil
 	chandler.characters = nil
 	chandler.ignorableWhitespace = nil

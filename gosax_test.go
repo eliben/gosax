@@ -13,8 +13,11 @@ func TestInit(*testing.T) {
 		StartElement: func(name string, attrs []string) {
 			fmt.Printf("start elem: %v, attrs %v\n", name, attrs)
 		},
+		EndElement: func(name string) {
+			fmt.Printf("end elem: %v\n", name)
+		},
 	}
 	// Just testing that nothing crashed
 	err := ParseFile("testfiles/fruit.xml", scb)
-	fmt.Println(err)
+	fmt.Println("err", err)
 }

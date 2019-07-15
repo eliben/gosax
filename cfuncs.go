@@ -8,6 +8,7 @@ package gosax
 
 extern void goStartDocument(void*);
 extern void goStartElement(void*, const xmlChar*, const xmlChar**, int);
+extern void goEndElement(void*, const xmlChar*);
 
 void startDocumentCgo(void* user_data) {
   goStartDocument(user_data);
@@ -18,10 +19,18 @@ void startElementCgo(void* user_data,
                      const xmlChar** attrs) {
 
   int i = 0;
-  while (attrs[i] != NULL) {
-    i++;
+  if (attrs != NULL) {
+    while (attrs[i] != NULL) {
+      i++;
+    }
   }
+  printf("@@ i = %d\n", i);
   goStartElement(user_data, name, attrs, i);
+  printf("@@ after Go call\n");
+}
+
+void endElementCgo(void* user_data, const xmlChar* name) {
+	goEndElement(user_data, name);
 }
 */
 import "C"
