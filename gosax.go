@@ -60,24 +60,47 @@ func ParseFile(filename string, cb SaxCallbacks) error {
 	var cfilename *C.char = C.CString(filename)
 	defer C.free(unsafe.Pointer(cfilename))
 
-	cHandler := C.xmlSAXHandler{}
+	chandler := C.xmlSAXHandler{}
 
 	if cb.StartDocument != nil {
-		cHandler.startDocument = C.startDocumentSAXFunc(C.startDocumentCgo)
+		chandler.startDocument = C.startDocumentSAXFunc(C.startDocumentCgo)
 	} else {
-		cHandler.startDocument = nil
+		chandler.startDocument = nil
 	}
 
 	if cb.StartElement != nil {
-		cHandler.startElement = C.startElementSAXFunc(C.startElementCgo)
+		chandler.startElement = C.startElementSAXFunc(C.startElementCgo)
 	} else {
-		cHandler.startElement = nil
+		chandler.startElement = nil
 	}
+
+	chandler.internalSubset = nil
+	chandler.isStandalone = nil
+	chandler.hasInternalSubset = nil
+	chandler.hasExternalSubset = nil
+	chandler.resolveEntity = nil
+	chandler.getEntity = nil
+	chandler.entityDecl = nil
+	chandler.notationDecl = nil
+	chandler.attributeDecl = nil
+	chandler.elementDecl = nil
+	chandler.unparsedEntityDecl = nil
+	chandler.setDocumentLocator = nil
+	chandler.endDocument = nil
+	chandler.endElement = nil
+	chandler.reference = nil
+	chandler.characters = nil
+	chandler.ignorableWhitespace = nil
+	chandler.processingInstruction = nil
+	chandler.comment = nil
+	chandler.warning = nil
+	chandler.error = nil
+	chandler.fatalError = nil
 
 	user_data := pointer.Save(&cb)
 	defer pointer.Unref(user_data)
 
-	rc := C.xmlSAXUserParseFile(&cHandler, user_data, cfilename)
+	rc := C.xmlSAXUserParseFile(&chandler, user_data, cfilename)
 	if rc != 0 {
 		fmt.Println("xmlSAXUserParseFile returned", rc)
 	}

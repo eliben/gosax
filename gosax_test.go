@@ -14,7 +14,7 @@ func TestInit(*testing.T) {
 			fmt.Printf("start elem: %v, attrs %v\n", name, attrs)
 		},
 	}
-	// Just testing that nothing crashed during init
+	// Just testing that nothing crashed
 	err := ParseFile("testfiles/fruit.xml", scb)
 	fmt.Println(err)
 }
