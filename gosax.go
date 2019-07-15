@@ -12,6 +12,10 @@ import (
 #include <libxml/tree.h>
 #include <libxml/parser.h>
 #include <libxml/parserInternals.h>
+
+extern void startDocumentCgo(void*);
+
+extern void startElementCgo(void*, const xmlChar*, const xmlChar**);
 */
 import "C"
 import "github.com/eliben/gosax/pointer"
@@ -59,21 +63,21 @@ func ParseFile(filename string, cb SaxCallbacks) error {
 	cHandler := C.xmlSAXHandler{}
 
 	if cb.StartDocument != nil {
-		cHandler.startDocument = C.startDocumentSAXFunc(startDocumentCgo)
+		cHandler.startDocument = C.startDocumentSAXFunc(C.startDocumentCgo)
 	} else {
 		cHandler.startDocument = nil
 	}
 
-	if cb.StartElementFunc != nil {
-		cHandler.startElemnt = C.startElementSAXFunc(startElementCgo)
+	if cb.StartElement != nil {
+		cHandler.startElement = C.startElementSAXFunc(C.startElementCgo)
 	} else {
 		cHandler.startElement = nil
 	}
 
-	user_data := pointer.Save(cb)
+	user_data := pointer.Save(&cb)
 	defer pointer.Unref(user_data)
 
-	rc := c.xmlSAXUserParseFile(&cHandler, user_data, cfilename)
+	rc := C.xmlSAXUserParseFile(&cHandler, user_data, cfilename)
 	if rc != 0 {
 		fmt.Println("xmlSAXUserParseFile returned", rc)
 	}
