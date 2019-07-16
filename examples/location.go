@@ -1,15 +1,30 @@
 package main
 
 import (
+	"flag"
 	"fmt"
+	"log"
 	"os"
+	"runtime/pprof"
 	"strings"
 	"unsafe"
 
 	"github.com/eliben/gosax"
 )
 
+var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
+
 func main() {
+	flag.Parse()
+	if *cpuprofile != "" {
+		f, err := os.Create(*cpuprofile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		pprof.StartCPUProfile(f)
+		defer pprof.StopCPUProfile()
+	}
+
 	counter := 0
 	inLocation := false
 
@@ -51,7 +66,7 @@ func main() {
 		},
 	}
 
-	err := gosax.ParseFile(os.Args[1], scb)
+	err := gosax.ParseFile(flag.Args()[0], scb)
 	if err != nil {
 		panic(err)
 	}
