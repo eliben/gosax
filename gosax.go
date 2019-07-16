@@ -19,6 +19,7 @@ extern void startElementCgo(void*, const xmlChar*, const xmlChar**);
 extern void startElementNoAttrCgo(void*, const xmlChar*, const xmlChar**);
 extern void endElementCgo(void*, const xmlChar*);
 extern void charactersCgo(void*, const xmlChar*, int);
+extern void charactersRawCgo(void*, const xmlChar*, int);
 
 // Since this structure contains pointers, take extra care to zero it out
 // before passing it to Go code.
@@ -45,6 +46,7 @@ type StartElementFunc func(name string, attrs []string)
 type StartElementNoAttrFunc func(name string)
 type EndElementFunc func(name string)
 type CharactersFunc func(contents string)
+type CharactersRawFunc func(ch unsafe.Pointer, chlen int)
 
 type SaxCallbacks struct {
 	StartDocument StartDocumentFunc
@@ -54,7 +56,9 @@ type SaxCallbacks struct {
 	StartElementNoAttr StartElementNoAttrFunc
 
 	EndElement EndElementFunc
-	Characters CharactersFunc
+
+	Characters    CharactersFunc
+	CharactersRaw CharactersRawFunc
 }
 
 //export goStartDocument
@@ -71,8 +75,6 @@ func goEndDocument(user_data unsafe.Pointer) {
 
 //export goStartElement
 func goStartElement(user_data unsafe.Pointer, name *C.char, attrs **C.char, attrlen C.int) {
-	// TODO: optimization opportunity: provide callback for start elements w/o
-	// attributes, to save all this work here and in the C wrapper.
 	gcb := pointer.Restore(user_data).(*SaxCallbacks)
 	length := int(attrlen)
 	var goattrs []string
@@ -100,11 +102,18 @@ func goEndElement(user_data unsafe.Pointer, name *C.char) {
 
 //export goCharacters
 func goCharacters(user_data unsafe.Pointer, ch *C.char, chlen C.int) {
-	// TODO: optimization opportunity: GoStringN copies the data, so we may want
-	// the user to get raw *C.char and C.int instead and selectively copy to a Go
-	// string when in the right parsing stage.
 	gcb := pointer.Restore(user_data).(*SaxCallbacks)
 	gcb.Characters(C.GoStringN(ch, chlen))
+}
+
+//export goCharactersRaw
+func goCharactersRaw(user_data unsafe.Pointer, ch *C.char, chlen C.int) {
+	gcb := pointer.Restore(user_data).(*SaxCallbacks)
+	gcb.CharactersRaw(unsafe.Pointer(ch), int(chlen))
+}
+
+func UnpackString(ch unsafe.Pointer, chlen int) string {
+	return C.GoStringN((*C.char)(ch), C.int(chlen))
 }
 
 func ParseFile(filename string, cb SaxCallbacks) error {
@@ -137,6 +146,10 @@ func ParseFile(filename string, cb SaxCallbacks) error {
 
 	if cb.Characters != nil {
 		SAXhandler.characters = C.charactersSAXFunc(C.charactersCgo)
+	}
+	// CharactersRaw overrides Characters
+	if cb.CharactersRaw != nil {
+		SAXhandler.characters = C.charactersSAXFunc(C.charactersRawCgo)
 	}
 
 	user_data := pointer.Save(&cb)

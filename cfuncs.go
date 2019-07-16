@@ -12,6 +12,7 @@ extern void goStartElement(void*, const xmlChar*, const xmlChar**, int);
 extern void goStartElementNoAttr(void*, const xmlChar*);
 extern void goEndElement(void*, const xmlChar*);
 extern void goCharacters(void*, const xmlChar*, int);
+extern void goCharactersRaw(void*, const xmlChar*, int);
 
 void startDocumentCgo(void* user_data) {
   goStartDocument(user_data);
@@ -46,6 +47,10 @@ void endElementCgo(void* user_data, const xmlChar* name) {
 
 void charactersCgo(void* user_data, const xmlChar* ch, int len) {
 	goCharacters(user_data, ch, len);
+}
+
+void charactersRawCgo(void* user_data, const xmlChar* ch, int len) {
+	goCharactersRaw(user_data, ch, len);
 }
 */
 import "C"

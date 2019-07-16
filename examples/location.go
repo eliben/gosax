@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"unsafe"
 
 	"github.com/eliben/gosax"
 )
@@ -21,6 +22,7 @@ func main() {
 			}
 		},
 
+		// this overrides StartElement
 		StartElementNoAttr: func(name string) {
 			if name == "location" {
 				inLocation = true
@@ -36,6 +38,15 @@ func main() {
 		Characters: func(contents string) {
 			if inLocation && strings.Contains(contents, "Africa") {
 				counter++
+			}
+		},
+
+		// this overrides Characters
+		CharactersRaw: func(ch unsafe.Pointer, chlen int) {
+			if inLocation {
+				if strings.Contains(gosax.UnpackString(ch, chlen), "Africa") {
+					counter++
+				}
 			}
 		},
 	}
