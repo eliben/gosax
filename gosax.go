@@ -16,6 +16,7 @@ import (
 extern void startDocumentCgo(void*);
 extern void endDocumentCgo(void*);
 extern void startElementCgo(void*, const xmlChar*, const xmlChar**);
+extern void startElementNoAttrCgo(void*, const xmlChar*, const xmlChar**);
 extern void endElementCgo(void*, const xmlChar*);
 extern void charactersCgo(void*, const xmlChar*, int);
 
@@ -41,15 +42,19 @@ func init() {
 type StartDocumentFunc func()
 type EndDocumentFunc func()
 type StartElementFunc func(name string, attrs []string)
+type StartElementNoAttrFunc func(name string)
 type EndElementFunc func(name string)
 type CharactersFunc func(contents string)
 
 type SaxCallbacks struct {
 	StartDocument StartDocumentFunc
 	EndDocument   EndDocumentFunc
-	StartElement  StartElementFunc
-	EndElement    EndElementFunc
-	Characters    CharactersFunc
+
+	StartElement       StartElementFunc
+	StartElementNoAttr StartElementNoAttrFunc
+
+	EndElement EndElementFunc
+	Characters CharactersFunc
 }
 
 //export goStartDocument
@@ -79,6 +84,12 @@ func goStartElement(user_data unsafe.Pointer, name *C.char, attrs **C.char, attr
 		}
 	}
 	gcb.StartElement(C.GoString(name), goattrs)
+}
+
+//export goStartElementNoAttr
+func goStartElementNoAttr(user_data unsafe.Pointer, name *C.char) {
+	gcb := pointer.Restore(user_data).(*SaxCallbacks)
+	gcb.StartElementNoAttr(C.GoString(name))
 }
 
 //export goEndElement
@@ -114,6 +125,10 @@ func ParseFile(filename string, cb SaxCallbacks) error {
 
 	if cb.StartElement != nil {
 		SAXhandler.startElement = C.startElementSAXFunc(C.startElementCgo)
+	}
+	// StartElementNoAttr overrides StartElement
+	if cb.StartElementNoAttr != nil {
+		SAXhandler.startElement = C.startElementSAXFunc(C.startElementNoAttrCgo)
 	}
 
 	if cb.EndElement != nil {

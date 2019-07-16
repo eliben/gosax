@@ -9,6 +9,7 @@ package gosax
 extern void goStartDocument(void*);
 extern void goEndDocument(void*);
 extern void goStartElement(void*, const xmlChar*, const xmlChar**, int);
+extern void goStartElementNoAttr(void*, const xmlChar*);
 extern void goEndElement(void*, const xmlChar*);
 extern void goCharacters(void*, const xmlChar*, int);
 
@@ -31,6 +32,12 @@ void startElementCgo(void* user_data,
     }
   }
   goStartElement(user_data, name, attrs, i);
+}
+
+void startElementNoAttrCgo(void* user_data,
+                           const xmlChar* name,
+                           const xmlChar** attrs) {
+  goStartElementNoAttr(user_data, name);
 }
 
 void endElementCgo(void* user_data, const xmlChar* name) {

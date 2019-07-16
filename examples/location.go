@@ -21,6 +21,14 @@ func main() {
 			}
 		},
 
+		StartElementNoAttr: func(name string) {
+			if name == "location" {
+				inLocation = true
+			} else {
+				inLocation = false
+			}
+		},
+
 		EndElement: func(name string) {
 			inLocation = false
 		},
