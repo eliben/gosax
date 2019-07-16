@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	mutex sync.Mutex
+	mutex sync.RWMutex
 	store = map[unsafe.Pointer]interface{}{}
 )
 
@@ -26,9 +26,9 @@ func Save(v interface{}) unsafe.Pointer {
 		panic("C.malloc failed")
 	}
 
-	mutex.Lock()
+	mutex.WLock()
 	store[ptr] = v
-	mutex.Unlock()
+	mutex.WUnlock()
 
 	return ptr
 }
@@ -38,9 +38,9 @@ func Restore(ptr unsafe.Pointer) (v interface{}) {
 		return nil
 	}
 
-	mutex.Lock()
+	mutex.RLock()
 	v = store[ptr]
-	mutex.Unlock()
+	mutex.RUnlock()
 	return
 }
 
@@ -49,9 +49,9 @@ func Unref(ptr unsafe.Pointer) {
 		return
 	}
 
-	mutex.Lock()
+	mutex.WLock()
 	delete(store, ptr)
-	mutex.Unlock()
+	mutex.WUnlock()
 
 	C.free(ptr)
 }
