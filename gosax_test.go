@@ -8,6 +8,7 @@ func TestInit(*testing.T) {
 
 func TestBasic(t *testing.T) {
 	var plantId string
+	var numOrigins int
 
 	scb := SaxCallbacks{
 		StartDocument: func() {
@@ -21,6 +22,8 @@ func TestBasic(t *testing.T) {
 					t.Errorf("want 'id' attr, got %v", attrs[0])
 				}
 				plantId = attrs[1]
+			} else if name == "origin" {
+				numOrigins++
 			}
 		},
 		EndElement: func(name string) {
@@ -34,5 +37,9 @@ func TestBasic(t *testing.T) {
 
 	if plantId != "27" {
 		t.Errorf("want plant id %v, got %v", 27, plantId)
+	}
+
+	if numOrigins != 2 {
+		t.Errorf("want num origins 2, got %v", numOrigins)
 	}
 }
