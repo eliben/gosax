@@ -1,6 +1,8 @@
 package gosax
 
-import "testing"
+import (
+	"testing"
+)
 
 func TestInit(*testing.T) {
 	// Test that nothing crashed in init()
@@ -9,9 +11,15 @@ func TestInit(*testing.T) {
 func TestBasic(t *testing.T) {
 	var plantId string
 	var numOrigins int
+	var startDoc bool
+	var endDoc bool
 
 	scb := SaxCallbacks{
 		StartDocument: func() {
+			startDoc = true
+		},
+		EndDocument: func() {
+			endDoc = true
 		},
 		StartElement: func(name string, attrs []string) {
 			if name == "plant" {
@@ -41,5 +49,33 @@ func TestBasic(t *testing.T) {
 
 	if numOrigins != 2 {
 		t.Errorf("want num origins 2, got %v", numOrigins)
+	}
+	if !startDoc {
+		t.Errorf("want doc start, found none")
+	}
+
+	if !endDoc {
+		t.Errorf("want doc end, found none")
+	}
+}
+
+func TestCharacters(t *testing.T) {
+	m := make(map[string]bool)
+	scb := SaxCallbacks{
+		Characters: func(contents string) {
+			m[contents] = true
+		},
+	}
+
+	err := ParseFile("testfiles/fruit.xml", scb)
+	if err != nil {
+		panic(err)
+	}
+
+	chars := []string{"Coffee", "Ethiopia", "Brazil"}
+	for _, c := range chars {
+		if _, ok := m[c]; !ok {
+			t.Errorf("expected to find %v characters", c)
+		}
 	}
 }
