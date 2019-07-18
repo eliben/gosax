@@ -46,6 +46,47 @@ func init() {
 	})
 }
 
+// SaxCallbacks collects callback functions to invoke on SAX events. Only
+// populate callbacks you're interested in - callbacks left as nil will not
+// be registered with the C layer and may save processing time.
+// Some callbacks override others for optimization purposes - check the comments
+// for more information.
+type SaxCallbacks struct {
+	// StartDocument is invoked on the "start document" event.
+	StartDocument StartDocumentFunc
+
+	// EndDocument is invoked on the "end document" event
+	EndDocument EndDocumentFunc
+
+	// StartElement is invoked whenever the beginning of a new element is found.
+	// name will be the element name, and attrs a slice of attributes where
+	// attribute names alternate with values. For example, given the element
+	// <elem foo="bar" id="100"> the callback will get name="elem" and
+	// attrs=["foo", "bar", "id", "100"].
+	StartElement StartElementFunc
+
+	// StartElementNoAttr will override StartElement, if set. When you don't
+	// care about the attributes of an element, use this one - it will be faster
+	// because it doesn't have to do attribute unpacking, which is expensive.
+	StartElementNoAttr StartElementNoAttrFunc
+
+	// EndElement is invoked at the end of parsing an element (after closing tag
+	// has been processed), with name being the element name.
+	EndElement EndElementFunc
+
+	// Characters is invoked on character data inside elements. contents is the
+	// data, as string. Note that this callback may be invoked multiple times
+	// within a single tag.
+	Characters CharactersFunc
+
+	// CharactersRaw will override Characters, if set. It doesn't translate XML
+	// data into a Go string, but leaves it as an opaque pair of (ch, chlen),
+	// which you could use UnpackString to convert to a string if needed. This
+	// could be a useful optimization if you're only occasionally interested in
+	// the contents of character data.
+	CharactersRaw CharactersRawFunc
+}
+
 type StartDocumentFunc func()
 type EndDocumentFunc func()
 type StartElementFunc func(name string, attrs []string)
@@ -53,70 +94,6 @@ type StartElementNoAttrFunc func(name string)
 type EndElementFunc func(name string)
 type CharactersFunc func(contents string)
 type CharactersRawFunc func(ch unsafe.Pointer, chlen int)
-
-type SaxCallbacks struct {
-	StartDocument StartDocumentFunc
-	EndDocument   EndDocumentFunc
-
-	StartElement       StartElementFunc
-	StartElementNoAttr StartElementNoAttrFunc
-
-	EndElement EndElementFunc
-
-	Characters    CharactersFunc
-	CharactersRaw CharactersRawFunc
-}
-
-//export goStartDocument
-func goStartDocument(user_data unsafe.Pointer) {
-	gcb := pointer.Restore(user_data).(*SaxCallbacks)
-	gcb.StartDocument()
-}
-
-//export goEndDocument
-func goEndDocument(user_data unsafe.Pointer) {
-	gcb := pointer.Restore(user_data).(*SaxCallbacks)
-	gcb.EndDocument()
-}
-
-//export goStartElement
-func goStartElement(user_data unsafe.Pointer, name *C.char, attrs **C.char, attrlen C.int) {
-	gcb := pointer.Restore(user_data).(*SaxCallbacks)
-	length := int(attrlen)
-	var goattrs []string
-	if length > 0 {
-		tmpslice := (*[1 << 30]*C.char)(unsafe.Pointer(attrs))[:length:length]
-		goattrs = make([]string, length)
-		for i, s := range tmpslice {
-			goattrs[i] = C.GoString(s)
-		}
-	}
-	gcb.StartElement(C.GoString(name), goattrs)
-}
-
-//export goStartElementNoAttr
-func goStartElementNoAttr(user_data unsafe.Pointer, name *C.char) {
-	gcb := pointer.Restore(user_data).(*SaxCallbacks)
-	gcb.StartElementNoAttr(C.GoString(name))
-}
-
-//export goEndElement
-func goEndElement(user_data unsafe.Pointer, name *C.char) {
-	gcb := pointer.Restore(user_data).(*SaxCallbacks)
-	gcb.EndElement(C.GoString(name))
-}
-
-//export goCharacters
-func goCharacters(user_data unsafe.Pointer, ch *C.char, chlen C.int) {
-	gcb := pointer.Restore(user_data).(*SaxCallbacks)
-	gcb.Characters(C.GoStringN(ch, chlen))
-}
-
-//export goCharactersRaw
-func goCharactersRaw(user_data unsafe.Pointer, ch *C.char, chlen C.int) {
-	gcb := pointer.Restore(user_data).(*SaxCallbacks)
-	gcb.CharactersRaw(unsafe.Pointer(ch), int(chlen))
-}
 
 func UnpackString(ch unsafe.Pointer, chlen int) string {
 	return C.GoStringN((*C.char)(ch), C.int(chlen))
@@ -169,4 +146,55 @@ func ParseFile(filename string, cb SaxCallbacks) error {
 	}
 
 	return nil
+}
+
+//export goStartDocument
+func goStartDocument(user_data unsafe.Pointer) {
+	gcb := pointer.Restore(user_data).(*SaxCallbacks)
+	gcb.StartDocument()
+}
+
+//export goEndDocument
+func goEndDocument(user_data unsafe.Pointer) {
+	gcb := pointer.Restore(user_data).(*SaxCallbacks)
+	gcb.EndDocument()
+}
+
+//export goStartElement
+func goStartElement(user_data unsafe.Pointer, name *C.char, attrs **C.char, attrlen C.int) {
+	gcb := pointer.Restore(user_data).(*SaxCallbacks)
+	length := int(attrlen)
+	var goattrs []string
+	if length > 0 {
+		tmpslice := (*[1 << 30]*C.char)(unsafe.Pointer(attrs))[:length:length]
+		goattrs = make([]string, length)
+		for i, s := range tmpslice {
+			goattrs[i] = C.GoString(s)
+		}
+	}
+	gcb.StartElement(C.GoString(name), goattrs)
+}
+
+//export goStartElementNoAttr
+func goStartElementNoAttr(user_data unsafe.Pointer, name *C.char) {
+	gcb := pointer.Restore(user_data).(*SaxCallbacks)
+	gcb.StartElementNoAttr(C.GoString(name))
+}
+
+//export goEndElement
+func goEndElement(user_data unsafe.Pointer, name *C.char) {
+	gcb := pointer.Restore(user_data).(*SaxCallbacks)
+	gcb.EndElement(C.GoString(name))
+}
+
+//export goCharacters
+func goCharacters(user_data unsafe.Pointer, ch *C.char, chlen C.int) {
+	gcb := pointer.Restore(user_data).(*SaxCallbacks)
+	gcb.Characters(C.GoStringN(ch, chlen))
+}
+
+//export goCharactersRaw
+func goCharactersRaw(user_data unsafe.Pointer, ch *C.char, chlen C.int) {
+	gcb := pointer.Restore(user_data).(*SaxCallbacks)
+	gcb.CharactersRaw(unsafe.Pointer(ch), int(chlen))
 }
