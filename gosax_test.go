@@ -1,6 +1,7 @@
 package gosax
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -77,5 +78,16 @@ func TestCharacters(t *testing.T) {
 		if _, ok := m[c]; !ok {
 			t.Errorf("expected to find %v characters", c)
 		}
+	}
+}
+
+func TestError(t *testing.T) {
+	scb := SaxCallbacks{}
+	err := ParseFile("testfiles/badfile.xml", scb)
+	if err == nil {
+		t.Errorf("want non-nil error")
+	}
+	if !strings.Contains(err.Error(), "Start tag expected") {
+		t.Errorf("want start tag error, got '%v'", err)
 	}
 }

@@ -2,6 +2,7 @@ package gosax
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 	"unsafe"
 )
@@ -26,6 +27,11 @@ extern void charactersRawCgo(void*, const xmlChar*, int);
 static inline xmlSAXHandler newHandlerStruct() {
 	xmlSAXHandler h = {0};
 	return h;
+}
+
+// Wrap a C macro in a function callable from Go.
+static inline xmlError* getLastError() {
+	return xmlGetLastError();
 }
 */
 import "C"
@@ -155,10 +161,11 @@ func ParseFile(filename string, cb SaxCallbacks) error {
 	user_data := pointer.Save(&cb)
 	defer pointer.Unref(user_data)
 
-	// TODO: more real error handling -- actually report the parsing error
 	rc := C.xmlSAXUserParseFile(&SAXhandler, user_data, cfilename)
 	if rc != 0 {
-		fmt.Println("xmlSAXUserParseFile returned", rc)
+		xmlErr := C.getLastError()
+		msg := strings.TrimSpace(C.GoString(xmlErr.message))
+		return fmt.Errorf("line %v: error: %v", xmlErr.line, msg)
 	}
 
 	return nil

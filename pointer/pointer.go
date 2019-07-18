@@ -26,9 +26,9 @@ func Save(v interface{}) unsafe.Pointer {
 		panic("C.malloc failed")
 	}
 
-	mutex.WLock()
+	mutex.Lock()
 	store[ptr] = v
-	mutex.WUnlock()
+	mutex.Unlock()
 
 	return ptr
 }
@@ -49,9 +49,9 @@ func Unref(ptr unsafe.Pointer) {
 		return
 	}
 
-	mutex.WLock()
+	mutex.Lock()
 	delete(store, ptr)
-	mutex.WUnlock()
+	mutex.Unlock()
 
 	C.free(ptr)
 }
