@@ -19,13 +19,14 @@ void startDocumentCgo(void* user_data) {
 }
 
 void endDocumentCgo(void* user_data) {
-	goEndDocument(user_data);
+  goEndDocument(user_data);
 }
 
 void startElementCgo(void* user_data,
                      const xmlChar* name,
                      const xmlChar** attrs) {
-
+  // The attrs array is terminated with a NULL pointer. To make it usable in
+  // Go, we find the length and pass it explicitly to the Go callback.
   int i = 0;
   if (attrs != NULL) {
     while (attrs[i] != NULL) {
@@ -42,15 +43,15 @@ void startElementNoAttrCgo(void* user_data,
 }
 
 void endElementCgo(void* user_data, const xmlChar* name) {
-	goEndElement(user_data, name);
+  goEndElement(user_data, name);
 }
 
 void charactersCgo(void* user_data, const xmlChar* ch, int len) {
-	goCharacters(user_data, ch, len);
+  goCharacters(user_data, ch, len);
 }
 
 void charactersRawCgo(void* user_data, const xmlChar* ch, int len) {
-	goCharactersRaw(user_data, ch, len);
+  goCharactersRaw(user_data, ch, len);
 }
 */
 import "C"

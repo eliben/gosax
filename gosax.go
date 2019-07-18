@@ -95,10 +95,15 @@ type EndElementFunc func(name string)
 type CharactersFunc func(contents string)
 type CharactersRawFunc func(ch unsafe.Pointer, chlen int)
 
+// UnpackString unpacks the opaque ch, chlen pair (that some callbacks in
+// this package may create) into a Go string.
 func UnpackString(ch unsafe.Pointer, chlen int) string {
 	return C.GoStringN((*C.char)(ch), C.int(chlen))
 }
 
+// ParseFile parses an XML file with the given name using SAX, with cb as
+// the callbacks. The file name is required, rather than a reader, because it
+// gets passed directly to the C layer.
 func ParseFile(filename string, cb SaxCallbacks) error {
 	var cfilename *C.char = C.CString(filename)
 	defer C.free(unsafe.Pointer(cfilename))
@@ -135,6 +140,8 @@ func ParseFile(filename string, cb SaxCallbacks) error {
 		SAXhandler.characters = C.charactersSAXFunc(C.charactersRawCgo)
 	}
 
+	// Pack the callbacks structure into an opaque unsafe.Pointer which we'll
+	// pass to C as user_data, and C will pass it back to our Go callbacks.
 	user_data := pointer.Save(&cb)
 	defer pointer.Unref(user_data)
 
@@ -162,6 +169,12 @@ func goEndDocument(user_data unsafe.Pointer) {
 
 //export goStartElement
 func goStartElement(user_data unsafe.Pointer, name *C.char, attrs **C.char, attrlen C.int) {
+	// Passing attrs to Go is tricky because it's an array of C strings,
+	// terminated with a NULL pointer. The C callback startElementCgo calculates
+	// the length of the array and passes it in as attrlen. We still have to
+	// convert it to a Go slice, by mapping a slice on the underlying storage
+	// and copying the attributes, one by one. This is all rather expensive, so
+	// consider using the StartElementNoAttr callback instead, when applicable.
 	gcb := pointer.Restore(user_data).(*SaxCallbacks)
 	length := int(attrlen)
 	var goattrs []string
