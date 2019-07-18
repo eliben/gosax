@@ -1,3 +1,9 @@
+// gosax: Go wrapper for libxml SAX.
+//
+// C helpers for internal use.
+//
+// Eli Bendersky [https://eli.thegreenplace.net]
+// This code is in the public domain.
 package gosax
 
 /*

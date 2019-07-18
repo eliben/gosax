@@ -1,3 +1,9 @@
+// gosax: Go wrapper for libxml SAX.
+//
+// This file contains all the exported functionality of the module.
+//
+// Eli Bendersky [https://eli.thegreenplace.net]
+// This code is in the public domain.
 package gosax
 
 import (
