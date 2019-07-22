@@ -1,12 +1,17 @@
 # gosax
 
+For some background information, motivation and a basic usage sample see
+[this blog post](https://eli.thegreenplace.net/2019/faster-xml-stream-processing-in-go/).
+
+## Building
+
 To install libxml2 for development, do:
 
 ```
 $ sudo apt-get install libxml2 libxml2-dev
 ```
 
-Or build from source.
+Or build from source. You would need it installed to use ``gosax``.
 
 ## License
 
