@@ -212,7 +212,7 @@ func ParseMem(buf bytes.Buffer, cb SaxCallbacks) error {
 	copy(cBuf[:], buf.Bytes())
 
 	rc := C.xmlSAXUserParseMemory(&SAXhandler, user_data, (*C.char)(unsafe.Pointer(cBuf)), C.int(buf.Len()) )
-	
+
 	if rc != 0 {
 		xmlErr := C.getLastError()
 		msg := strings.TrimSpace(C.GoString(xmlErr.message))
