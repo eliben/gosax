@@ -9,7 +9,7 @@ package gosax
 import (
 	"bytes"
 	"fmt"
-	"github.com/eliben/gosax/pointer"
+	"github.com/thefish/gosax/pointer"
 	"strings"
 	"sync"
 	"unsafe"
@@ -205,22 +205,14 @@ func ParseMem(buf bytes.Buffer, cb SaxCallbacks) error {
 	user_data := pointer.Save(&cb)
 	defer pointer.Unref(user_data)
 
-	//rc := C.xmlSAXUserParseFile(&SAXhandler, user_data, cfilename)
-
 	bufPointer := C.malloc(C.size_t(buf.Len()))
 	defer C.free(bufPointer)
 
 	cBuf := (*[1 << 30]byte)(bufPointer)
 	copy(cBuf[:], buf.Bytes())
-	//rc = C.the_function(bufPointer, C.int(buf.Len()))
 
-	rc := C.xmlSAXUserParseMemory(&SAXhandler, user_data, bufPointer, C.int(buf.Len()) )
-
-	//int	xmlSAXUserParseMemory		(xmlSAXHandlerPtr sax,
-	//	void * user_data,
-	//const char * buffer,
-	//int size)
-
+	rc := C.xmlSAXUserParseMemory(&SAXhandler, user_data, (*C.char)(unsafe.Pointer(cBuf)), C.int(buf.Len()) )
+	
 	if rc != 0 {
 		xmlErr := C.getLastError()
 		msg := strings.TrimSpace(C.GoString(xmlErr.message))
