@@ -7,7 +7,9 @@
 package gosax
 
 import (
+	"bytes"
 	"fmt"
+	"github.com/eliben/gosax/pointer"
 	"strings"
 	"sync"
 	"unsafe"
@@ -41,7 +43,6 @@ static inline xmlError* getLastError() {
 }
 */
 import "C"
-import "github.com/eliben/gosax/pointer"
 
 // Used to ensure that xmlInitParser is only called once.
 var initOnce sync.Once
@@ -152,6 +153,74 @@ func ParseFile(filename string, cb SaxCallbacks) error {
 	defer pointer.Unref(user_data)
 
 	rc := C.xmlSAXUserParseFile(&SAXhandler, user_data, cfilename)
+	if rc != 0 {
+		xmlErr := C.getLastError()
+		msg := strings.TrimSpace(C.GoString(xmlErr.message))
+		return fmt.Errorf("line %v: error: %v", xmlErr.line, msg)
+	}
+
+	return nil
+}
+
+// A better SAX parsing routine. parse an XML in-memory buffer, with cb as
+// the callbacks.
+func ParseMem(buf bytes.Buffer, cb SaxCallbacks) error {
+	//var cfilename *C.char = C.CString(filename)
+	//defer C.free(unsafe.Pointer(cfilename))
+
+	// newHandlerStruct zeroes out all the pointers; we assign only those that
+	// are passed as non-nil in SaxCallbacks.
+	SAXhandler := C.newHandlerStruct()
+
+	if cb.StartDocument != nil {
+		SAXhandler.startDocument = C.startDocumentSAXFunc(C.startDocumentCgo)
+	}
+
+	if cb.EndDocument != nil {
+		SAXhandler.endDocument = C.endDocumentSAXFunc(C.endDocumentCgo)
+	}
+
+	if cb.StartElement != nil {
+		SAXhandler.startElement = C.startElementSAXFunc(C.startElementCgo)
+	}
+	// StartElementNoAttr overrides StartElement
+	if cb.StartElementNoAttr != nil {
+		SAXhandler.startElement = C.startElementSAXFunc(C.startElementNoAttrCgo)
+	}
+
+	if cb.EndElement != nil {
+		SAXhandler.endElement = C.endElementSAXFunc(C.endElementCgo)
+	}
+
+	if cb.Characters != nil {
+		SAXhandler.characters = C.charactersSAXFunc(C.charactersCgo)
+	}
+	// CharactersRaw overrides Characters
+	if cb.CharactersRaw != nil {
+		SAXhandler.characters = C.charactersSAXFunc(C.charactersRawCgo)
+	}
+
+	// Pack the callbacks structure into an opaque unsafe.Pointer which we'll
+	// pass to C as user_data, and C will pass it back to our Go callbacks.
+	user_data := pointer.Save(&cb)
+	defer pointer.Unref(user_data)
+
+	//rc := C.xmlSAXUserParseFile(&SAXhandler, user_data, cfilename)
+
+	bufPointer := C.malloc(C.size_t(buf.Len()))
+	defer C.free(bufPointer)
+
+	cBuf := (*[1 << 30]byte)(bufPointer)
+	copy(cBuf[:], buf.Bytes())
+	//rc = C.the_function(bufPointer, C.int(buf.Len()))
+
+	rc := C.xmlSAXUserParseMemory(&SAXhandler, user_data, bufPointer, C.int(buf.Len()) )
+
+	//int	xmlSAXUserParseMemory		(xmlSAXHandlerPtr sax,
+	//	void * user_data,
+	//const char * buffer,
+	//int size)
+
 	if rc != 0 {
 		xmlErr := C.getLastError()
 		msg := strings.TrimSpace(C.GoString(xmlErr.message))
