@@ -5,6 +5,7 @@
 package gosax
 
 import (
+	"bytes"
 	"strings"
 	"testing"
 )
@@ -93,5 +94,32 @@ func TestError(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "Start tag expected") {
 		t.Errorf("want start tag error, got '%v'", err)
+	}
+}
+
+func TestMemParse(t *testing.T) {
+	m := make(map[string]bool)
+	scb := SaxCallbacks{
+		Characters: func(contents string) {
+			m[contents] = true
+		},
+	}
+	buf := bytes.Buffer{}
+	buf.WriteString(`<?xml version="1.0" encoding="UTF-8"?>
+	<plant id="27">
+	<name>Coffee</name>
+	<origin>Ethiopia</origin>
+	<origin>Brazil</origin>
+	</plant>`)
+	err := ParseMem(buf, scb)
+	if err != nil {
+		panic(err)
+	}
+
+	chars := []string{"Coffee", "Ethiopia", "Brazil"}
+	for _, c := range chars {
+		if _, ok := m[c]; !ok {
+			t.Errorf("expected to find %v characters", c)
+		}
 	}
 }
