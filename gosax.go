@@ -9,7 +9,7 @@ package gosax
 import (
 	"bytes"
 	"fmt"
-	"github.com/thefish/gosax/pointer"
+	"github.com/eliben/gosax/pointer"
 	"strings"
 	"sync"
 	"unsafe"
