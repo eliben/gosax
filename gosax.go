@@ -207,6 +207,7 @@ func ParseMem(buf bytes.Buffer, cb SaxCallbacks) error {
 	bufPointer := C.malloc(C.size_t(buf.Len()))
 	defer C.free(bufPointer)
 
+	//@todo replace it with unsafe.Slice since version >1.17 becomes available
 	// Create a C buffer from pointer to mem block, and copy raw bytes of Go buffer to it
 	cBuf := (*[1 << 30]byte)(bufPointer)
 	copy(cBuf[:], buf.Bytes())
