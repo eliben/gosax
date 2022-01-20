@@ -13,11 +13,6 @@ $ sudo apt-get install libxml2 libxml2-dev
 
 Or build from source. You would need it installed to use ``gosax``.
 
-##improvements
-
-Now allows to parse from golang's ```bytes.Buffer```. See gosax_test.go
-
-
 ## License
 
 gosax's code is in the public domain (see `LICENSE` for details). It uses
