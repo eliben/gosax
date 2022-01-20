@@ -165,7 +165,6 @@ func ParseFile(filename string, cb SaxCallbacks) error {
 
 // ParseMem parses XML from in-memory buffer with SAX, applying cb as callbacks.
 func ParseMem(buf bytes.Buffer, cb SaxCallbacks) error {
-
 	// newHandlerStruct zeroes out all the pointers; we assign only those that
 	// are passed as non-nil in SaxCallbacks.
 	SAXhandler := C.newHandlerStruct()
@@ -203,18 +202,8 @@ func ParseMem(buf bytes.Buffer, cb SaxCallbacks) error {
 	user_data := pointer.Save(&cb)
 	defer pointer.Unref(user_data)
 
-	// Allocate memory, do not forget to free it after parsing finishes
-	bufPointer := C.malloc(C.size_t(buf.Len()))
-	defer C.free(bufPointer)
-
-	//@todo replace it with unsafe.Slice since version >1.17 becomes available
-	// Create a C buffer from pointer to mem block, and copy raw bytes of Go buffer to it
-	cBuf := (*[1 << 30]byte)(bufPointer)
-	copy(cBuf[:], buf.Bytes())
-
-	// Call SAX inmem parsing API, passing user callbacks and freshly created
-	// pointer to raw data, getting a result code.
-	rc := C.xmlSAXUserParseMemory(&SAXhandler, user_data, (*C.char)(unsafe.Pointer(cBuf)), C.int(buf.Len()))
+	bufPtr := unsafe.Pointer(&buf.Bytes()[0])
+	rc := C.xmlSAXUserParseMemory(&SAXhandler, user_data, (*C.char)(bufPtr), C.int(buf.Len()))
 
 	// Check if SAX call was finished succesfully
 	if rc != 0 {
