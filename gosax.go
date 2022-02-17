@@ -354,6 +354,7 @@ func (xctx *XmlParserCtxt) ParseChunk(chunk string, last bool) error {
 	return nil
 }
 
+// Close frees the pointer to the ParserCtx
 func (xctx *XmlParserCtxt) Close() {
 	C.xmlFreeParserCtxt(xctx.handler)
 }
