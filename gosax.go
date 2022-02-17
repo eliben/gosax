@@ -271,3 +271,89 @@ func goCharactersRaw(user_data unsafe.Pointer, ch *C.char, chlen C.int) {
 	gcb := pointer.Restore(user_data).(*SaxCallbacks)
 	gcb.CharactersRaw(unsafe.Pointer(ch), int(chlen))
 }
+
+type XmlParserCtxt struct {
+	handler C.xmlParserCtxtPtr
+}
+
+// CreatePushParser parses XML in chunks with SAX, applying cb as callbacks. Use
+// ParseChunk to pass more data. Call Close to free the C pointer.
+func CreatePushParser(chunk string, cb SaxCallbacks) (*XmlParserCtxt, error) {
+	// newHandlerStruct zeroes out all the pointers; we assign only those that
+	// are passed as non-nil in SaxCallbacks.
+	SAXhandler := C.newHandlerStruct()
+
+	if cb.StartDocument != nil {
+		SAXhandler.startDocument = C.startDocumentSAXFunc(C.startDocumentCgo)
+	}
+
+	if cb.EndDocument != nil {
+		SAXhandler.endDocument = C.endDocumentSAXFunc(C.endDocumentCgo)
+	}
+
+	if cb.StartElement != nil {
+		SAXhandler.startElement = C.startElementSAXFunc(C.startElementCgo)
+	}
+	// StartElementNoAttr overrides StartElement
+	if cb.StartElementNoAttr != nil {
+		SAXhandler.startElement = C.startElementSAXFunc(C.startElementNoAttrCgo)
+	}
+
+	if cb.EndElement != nil {
+		SAXhandler.endElement = C.endElementSAXFunc(C.endElementCgo)
+	}
+
+	if cb.Characters != nil {
+		SAXhandler.characters = C.charactersSAXFunc(C.charactersCgo)
+	}
+	// CharactersRaw overrides Characters
+	if cb.CharactersRaw != nil {
+		SAXhandler.characters = C.charactersSAXFunc(C.charactersRawCgo)
+	}
+
+	// Pack the callbacks structure into an opaque unsafe.Pointer which we'll
+	// pass to C as user_data, and C will pass it back to our Go callbacks.
+	user_data := pointer.Save(&cb)
+	// DO NOT pointer.Unref the user_data
+
+	c_ret := C.xmlCreatePushParserCtxt(&SAXhandler, user_data, C.CString(chunk), C.int(len(chunk)), C.CString(""))
+
+	if c_ret == nil {
+		return nil, fmt.Errorf("CreatePushParser error: %d", c_ret)
+	}
+
+	return &XmlParserCtxt{
+		handler: c_ret,
+	}, nil
+}
+
+// for a full list of all parser errors see
+// http://www.xmlsoft.org/html/libxml-xmlerror.html#xmlParserErrors
+var (
+	ERROR_DOCUMENT_END = fmt.Errorf("XML_ERR_DOCUMENT_END")
+)
+
+// ParseChunk accepts more XML chunks to be parsed
+func (xctx *XmlParserCtxt) ParseChunk(chunk string, last bool) error {
+	terminate := C.int(0)
+
+	if last {
+		terminate = C.int(1)
+	}
+
+	c_ret := C.xmlParseChunk(xctx.handler, C.CString(chunk), C.int(len(chunk)), terminate)
+
+	if int(c_ret) != 0 {
+		if int(c_ret) == 5 {
+			return ERROR_DOCUMENT_END
+		}
+
+		return fmt.Errorf("ParseChunk last: %v, error: %d", last, int(c_ret))
+	}
+
+	return nil
+}
+
+func (xctx *XmlParserCtxt) Close() {
+	C.xmlFreeParserCtxt(xctx.handler)
+}
