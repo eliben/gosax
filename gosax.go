@@ -341,7 +341,9 @@ func (xctx *XmlParserCtxt) ParseChunk(chunk string, last bool) error {
 		terminate = C.int(1)
 	}
 
-	c_ret := C.xmlParseChunk(xctx.handler, C.CString(chunk), C.int(len(chunk)), terminate)
+	c_chunk := C.CString(chunk)
+	c_ret := C.xmlParseChunk(xctx.handler, c_chunk, C.int(len(chunk)), terminate)
+	C.free(unsafe.Pointer(c_chunk))
 
 	if int(c_ret) != 0 {
 		if int(c_ret) == 5 {
